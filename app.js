@@ -224,13 +224,13 @@ function renderHome(){
           </div>
         </button>
         <button class="route-row type-card bus" data-kind="bus">
-          <img class="illust" src="bus-illustration.png" alt="" style="width: 117px; height: 85px; left: 426px; top: 54px">
+          <img class="illust" src="bus-illustration.png" alt="">
+          <div class="fade"></div>
           <div class="route-info">
             <div class="route-name">Автобусы</div>
             <div class="route-note">5 маршрутов · 2, 25, 77, 85, 52э</div>
           </div>
         </button>
-        <div class="fade" style="position: absolute; left: -7px; top: 93px"></div>
       </div>
       <div class="foot">
         <p>Расписания трамваев — по данным volgtrans.ru. Расписания автобусов проверены по двум независимым источникам (агрегаторы официальных данных МУП «ВПАТП №7» и ООО «Волгоградский автобусный парк»).</p>
@@ -262,15 +262,12 @@ function locateNearest(){
       const dist = haversine(lat, lon, h.lat, h.lon);
       if (!best || dist < best.dist) best = {...h, dist};
     }
-    if (best && best.dist < 1200){
-      btn.textContent = `📍 Рядом: ${best.name} (≈${Math.round(best.dist)} м)`;
-      // find a route that serves this stop and jump to it
-      const hit = findRouteForStop(best.name);
-      if (hit){
-        setTimeout(()=>{ state = {...state, screen:'detail', ...hit}; render(); }, 500);
-      }
-    } else {
-      btn.textContent = '📍 Рядом нет известных остановок — выберите маршрут вручную';
+    const distLabel = best.dist < 1000 ? `≈${Math.round(best.dist)} м` : `≈${(best.dist/1000).toFixed(1)} км`;
+    btn.textContent = `📍 Ближайшая остановка: ${best.name} (${distLabel})`;
+    // find a route that serves this stop and jump to it
+    const hit = findRouteForStop(best.name);
+    if (hit){
+      setTimeout(()=>{ state = {...state, screen:'detail', ...hit}; render(); }, 500);
     }
   }, err => {
     btn.textContent = '📍 Не удалось определить местоположение';
