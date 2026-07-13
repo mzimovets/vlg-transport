@@ -6,35 +6,6 @@ const pad = n => String(n).padStart(2,'0');
 const fmt = m => `${pad(Math.floor(m/60)%24)}:${pad(Math.round(m)%60)}`;
 const RU_DAYS = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
 
-/* ---------- known stop coordinates (small curated hub set) ----------
-   Approximate coordinates for a handful of major interchange stops only.
-   This is NOT a full stop database — geolocation "nearest stop" only
-   works near these hubs. See README for details / how to extend it. */
-const HUB_COORDS = [
-  { name:"Обувная фабрика",        lat:48.6098, lon:44.5178 },
-  { name:"ВолГУ",                  lat:48.5824, lon:44.5296 },
-  { name:"ТРЦ Акварель",           lat:48.5810, lon:44.5310 },
-  { name:"7-я Больница",           lat:48.6247, lon:44.5312 },
-  { name:"Радомская",              lat:48.6415, lon:44.5395 },
-  { name:"Площадь Ленина",         lat:48.7078, lon:44.5116 },
-  { name:"Комсомольская",          lat:48.7205, lon:44.5285 },
-  { name:"Пионерская",             lat:48.7286, lon:44.5480 },
-  { name:"Мамаев Курган",          lat:48.7423, lon:44.5372 },
-  { name:"ВгТЗ",                   lat:48.7752, lon:44.5847 },
-  { name:"Ельшанка",               lat:48.5981, lon:44.5202 },
-  { name:"Комплекс Юбилейный",     lat:48.5773, lon:44.4873 },
-  { name:"Ж/д вокзал Волгоград-1", lat:48.7069, lon:44.5147 },
-  { name:"Детский центр",          lat:48.7402, lon:44.5641 },
-  { name:"КИМ",                    lat:48.7418, lon:44.5583 },
-  { name:"площадь Чекистов",       lat:48.7245, lon:44.5432 },
-];
-
-function haversine(lat1,lon1,lat2,lon2){
-  const R = 6371000, toRad = x => x*Math.PI/180;
-  const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-  return 2*R*Math.asin(Math.sqrt(a));
-}
 
 /* ---------- favorites (localStorage) ----------
    Each favorite: {key:"tram:4", dir:"fwd", stopIdx:0} */
@@ -212,7 +183,6 @@ function renderHome(){
     </div>
     <div class="wrap">
       ${favoriteWidgetsHTML(null)}
-      <button class="locate-btn" id="locate-btn"><span class="locate-ico">📍</span> Найти ближайшую остановку</button>
       <label class="fld">Вид транспорта</label>
       <div class="route-list">
         <button class="route-row type-card tram" data-kind="tram">
@@ -245,46 +215,8 @@ function renderHome(){
       render();
     };
   });
-  document.getElementById('locate-btn').onclick = locateNearest;
 }
 
-function locateNearest(){
-  const btn = document.getElementById('locate-btn');
-  btn.textContent = '📍 Определяем местоположение…';
-  if (!navigator.geolocation){
-    btn.textContent = '📍 Геолокация недоступна в этом браузере';
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(pos => {
-    const {latitude:lat, longitude:lon} = pos.coords;
-    let best = null;
-    for (const h of HUB_COORDS){
-      const dist = haversine(lat, lon, h.lat, h.lon);
-      if (!best || dist < best.dist) best = {...h, dist};
-    }
-    const distLabel = best.dist < 1000 ? `≈${Math.round(best.dist)} м` : `≈${(best.dist/1000).toFixed(1)} км`;
-    btn.textContent = `📍 Ближайшая остановка: ${best.name} (${distLabel})`;
-    // find a route that serves this stop and jump to it
-    const hit = findRouteForStop(best.name);
-    if (hit){
-      setTimeout(()=>{ state = {...state, screen:'detail', ...hit}; render(); }, 500);
-    }
-  }, err => {
-    btn.textContent = '📍 Не удалось определить местоположение';
-  }, { enableHighAccuracy:true, timeout:8000 });
-}
-
-function findRouteForStop(stopName){
-  for (const [id, r] of Object.entries(D.trams)){
-    const idx = r.stops_fwd.indexOf(stopName);
-    if (idx>=0) return { kind:'tram', id, dir:'fwd', stopIdx: idx };
-  }
-  for (const [id, r] of Object.entries(D.buses)){
-    const idx = r.stops_fwd.indexOf(stopName);
-    if (idx>=0) return { kind:'bus', id, dir:'fwd', stopIdx: idx };
-  }
-  return null;
-}
 
 function renderList(){
   const kind = state.kind;
